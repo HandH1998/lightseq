@@ -14,7 +14,8 @@
 # limitations under the License.
 
 THIS_DIR=$(dirname $(readlink -f $0))
-
+export http_proxy=""
+export https_proxy=""
 export TASK_NAME=sst2
 
 # You can use multiple NICs in NCCL communication.
@@ -23,9 +24,9 @@ export TASK_NAME=sst2
 
 # Set your environment variables according to your training environment,
 # for details, please refer to https://pytorch.org/docs/1.10/distributed.html#launch-utility
-python3 -m torch.distributed.launch --nproc_per_node=$WORKER_GPU_NUM \
-  --nnodes=$WORKER_NUM --node_rank=$WORKER_ID --master_addr=$WORKER_0_HOST \
-  --master_port=$WORKER_0_PORT \
+python3 -m torch.distributed.launch --nproc_per_node=$ARNOLD_WORKER_GPU \
+  --nnodes=$ARNOLD_WORKER_NUM --node_rank=$ARNOLD_ID --master_addr=$ARNOLD_WORKER_0_HOST \
+  --master_port=$ARNOLD_WORKER_0_PORT \
   $THIS_DIR/run_gcq_glue.py \
   --model_name_or_path bert-base-cased \
   --task_name $TASK_NAME \
@@ -34,13 +35,13 @@ python3 -m torch.distributed.launch --nproc_per_node=$WORKER_GPU_NUM \
   --max_seq_length 128 \
   --per_device_train_batch_size 32 \
   --learning_rate 2e-5 \
-  --num_train_epochs 10 \
+  --num_train_epochs 4 \
   --output_dir /tmp/$TASK_NAME/ \
   --overwrite_output_dir \
   --fp16 \
   --seed 1234 \
   --logging_steps 10 \
-  --module_type 1 \
+  --module_type 2 \
   --enable_quant false \
   --enable_GCQ true \
   --GCQ_quantile 0.99 
