@@ -14,8 +14,8 @@
 # limitations under the License.
 
 THIS_DIR=$(dirname $(readlink -f $0))
-export http_proxy=""
-export https_proxy=""
+# export http_proxy=""
+# export https_proxy=""
 export TASK_NAME=sst2
 # You can use multiple NICs in NCCL communication.
 # E.g., if every machine has 4 NICs: eth0, eth1, eth2, eth3, you can use the following command.
