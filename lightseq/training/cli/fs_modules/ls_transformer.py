@@ -139,6 +139,8 @@ class LSTransformerModel(FairseqEncoderDecoderModel):
                             help='enable gradient communication quantization')
         parser.add_argument('--GCQ_quantile', type=float, default=0.99,
                             help='quantile value of gradient communication quantization, between 0.0-1.0')
+        parser.add_argument('--threshold_step', type=int, default=100,
+                            help='the bordline of GCQ and normal training')
         # fmt: on
         
 

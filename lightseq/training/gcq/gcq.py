@@ -104,10 +104,16 @@ class GCQState(object):
     Prepare the state for Gradient Communication Quantization (GCQ).
     """
 
-    def __init__(self, process_group, hidden_size=1024, quantile_value=0.99):
+    def __init__(self, process_group, cur_step=0, hidden_size=1024, quantile_value=0.99, threshold_step=100):
         self.process_group = process_group
+        self.cur_step = cur_step
         self.hidden_size = hidden_size
         self.quantile_value = quantile_value
+        self.threshold_step = threshold_step
+
+    def maybe_increase_step(self, bucket):
+        if bucket.is_last():
+            self.cur_step += 1
 
 
 def encode_and_decode(state, bucket) -> torch.futures.Future[torch.Tensor]:
@@ -119,35 +125,44 @@ def encode_and_decode(state, bucket) -> torch.futures.Future[torch.Tensor]:
     ), "The process_group should be initialized first!"
     process_group = state.process_group
     world_size = dist.get_world_size(process_group)
-    hidden_size = state.hidden_size
-    quantile_value = state.quantile_value
-    quantizer = GCQ(
-        world_size=world_size,
-        hidden_size=hidden_size,
-        bucket=bucket,
-        quantile_value=quantile_value,
-    )
-    scale = quantizer.get_scale()
-    # All_reduce scales between ranks and
-    # every rank gets the same global scale to encode gradients finally.
-    dist.all_reduce(
-        scale,
-        op=dist.ReduceOp.MAX,
-        group=process_group,
-        async_op=True,
-    ).get_future().wait()
-    # Quantize gradients to int8 locally.
-    compressed_gradient = quantizer.encode_bucket()
-    # All_reduce int8 gradients.
-    fut = dist.all_reduce(
-        compressed_gradient, group=process_group, async_op=True
-    ).get_future()
+    if state.cur_step <= state.threshold_step:
+        hidden_size = state.hidden_size
+        quantile_value = state.quantile_value
+        quantizer = GCQ(
+            world_size=world_size,
+            hidden_size=hidden_size,
+            bucket=bucket,
+            quantile_value=quantile_value,
+        )
+        scale = quantizer.get_scale()
+        # All_reduce scales between ranks and
+        # every rank gets the same global scale to encode gradients finally.
+        dist.all_reduce(
+            scale,
+            op=dist.ReduceOp.MAX,
+            group=process_group,
+            async_op=True,
+        ).get_future().wait()
+        # Quantize gradients to int8 locally.
+        compressed_gradient = quantizer.encode_bucket()
+        # All_reduce int8 gradients.
+        # fut = dist.all_reduce(
+        #     compressed_gradient, group=process_group, async_op=True
+        # ).get_future()
+    else:
+        compressed_gradient = bucket.buffer().div_(world_size)
+    fut = dist.all_reduce(compressed_gradient, group=process_group, async_op=True).get_future()
 
     def decompress(fut):
         """
         Dequantize the all_reduced int8 gradients to original dtype (default: fp16).
         """
-        decompressed_gradient = quantizer.decode_bucket()
+        decompressed_gradient = bucket.buffer()
+        if state.cur_step <= state.threshold_step:
+            decompressed_gradient = quantizer.decode_bucket()
+        else:
+            decompressed_gradient.copy_(fut.value()[0])
+        state.maybe_increase_step(bucket)
         dist.barrier(group=process_group, async_op=True)
         return decompressed_gradient
 

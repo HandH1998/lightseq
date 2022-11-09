@@ -35,6 +35,7 @@ class LSTrainer(Trainer):
                     process_group=dist.group.WORLD if dist.is_initialized() else None,
                     hidden_size=self.args.encoder_embed_dim,
                     quantile_value=self.args.GCQ_quantile,
+                    threshold_step=self.args.threshold_step,
                 )
                 # Register the communication hook.
                 self._wrapped_model.register_comm_hook(
