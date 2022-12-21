@@ -1,10 +1,3 @@
-## Export model
-In order to serve your own model, you need to export model trained from deeplearning framework(E.g.
-TenforFlow, PyTorch) to custom model proto defined by LightSeq. The following explains the custom
-transformer model format.
-
-### transformer model proto
-``` c
 syntax = "proto3";
 option optimize_for = LITE_RUNTIME;
 // all the matrix are stored in row-major order,
@@ -86,13 +79,18 @@ message EmbeddingLayer {
   repeated float norm_scale = 3;  // [hidden_size]
   repeated float norm_bias = 4;   // [hidden_size]
 
-  // below only for trg, not in src
-  // [hidden_size, enc_layer, 2, hidden_size]
+  // only for trg, not in src
+  // [dec_layer_num, hidden_size, 2, hidden_size]
   repeated float encode_output_project_kernel_kv = 5;
-  // [enc_layer, 2, hidden_size]
+  // only for trg, not in src
+  // [dec_layer_num, 2, hidden_size]
   repeated float encode_output_project_bias_kv = 6;
+  // only for trg, not in src
   // decoder vocab logit bias
   repeated float shared_bias = 7;  // [target_vocab_size]
+
+  // For multi lingual model, [num_lang, hidden_size]
+  repeated float lang_emb = 8;
 }
 
 message ModelConf {
@@ -103,6 +101,18 @@ message ModelConf {
   float length_penalty = 4;  // length penalty of beam search
   int32 src_padding_id = 5;  // source padding id
   int32 trg_start_id = 6;    // target start id
+  float diverse_lambda = 7; // diverse beam search lambda
+  string sampling_method = 8; // choice of beam_search, topk, topp, topk_greedy
+  float topp = 9; // parameter for topp sampling
+  int32 topk = 10; // parameter for topk sampling
+  int32 trg_end_id = 11; // eos of target embedding
+  bool is_post_ln = 12; // Pre-LN or Post-LN
+  bool no_scale_embedding = 13; // whether to scale embedding by sqrt(emb_dim)
+  bool use_gelu = 14; // use gelu for activation otherwise relu
+  // Multilingual model type, 0 for bilingual
+  // 1 for token level multilingual,
+  // 2 for sentence level multilingual
+  int32 multilg_type = 15;
 }
 
 message Transformer {
@@ -112,6 +122,3 @@ message Transformer {
   repeated DecoderLayer decoder_stack = 4;  // decoder weighs
   ModelConf model_conf = 5;                 // model_config
 }
-```
-So you only need to extract the model weights from deeplearning framework and fill it into proto, then you can serve your
-own model.
