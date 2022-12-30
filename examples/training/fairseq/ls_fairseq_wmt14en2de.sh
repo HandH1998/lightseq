@@ -3,13 +3,13 @@ set -ex
 THIS_DIR=$(dirname $(readlink -f $0))
 cd $THIS_DIR/../../..
 
-if [ ! -d "/tmp/wmt14_en_de" ]; then
+if [ ! -d "/root/wmt14_en_de" ]; then
     echo "Downloading dataset"
-    wget http://lf3-nlp-opensource.bytetos.com/obj/nlp-opensource/lightseq/wmt_data/databin_wmt14_en_de.tar.gz -P /tmp
-    tar -zxvf /tmp/databin_wmt14_en_de.tar.gz -C /tmp && rm /tmp/databin_wmt14_en_de.tar.gz
+    wget http://lf3-nlp-opensource.bytetos.com/obj/nlp-opensource/lightseq/wmt_data/databin_wmt14_en_de.tar.gz -P /root
+    tar -zxvf /root/databin_wmt14_en_de.tar.gz -C /root && rm /root/databin_wmt14_en_de.tar.gz
 fi
 
-lightseq-train /tmp/wmt14_en_de/ \
+lightseq-train /root/wmt14_en_de/ \
     --task translation \
     --arch ls_transformer_wmt_en_de_big_t2t --share-decoder-input-output-embed \
     --optimizer ls_adam --adam-betas '(0.9, 0.98)' \
@@ -25,4 +25,10 @@ lightseq-train /tmp/wmt14_en_de/ \
     --best-checkpoint-metric bleu \
     --maximize-best-checkpoint-metric \
     --fp16 \
-    --find-unused-parameters
+    --find-unused-parameters \
+    --tensorboard-logdir quant_adam_checkpoint \
+    --save-dir saved_model \
+    --no-epoch-checkpoints \
+    --max-epoch 100 \
+    2>&1 | tee quant_adam.log
+

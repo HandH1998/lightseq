@@ -9,7 +9,8 @@ import torch.optim
 from fairseq.dataclass import FairseqDataclass
 from fairseq.optim import FairseqOptimizer, register_optimizer
 from omegaconf import II
-from lightseq.training.ops.pytorch.adam import LSAdam
+# from lightseq.training.ops.pytorch.adam import LSAdam
+from lightseq.training.ops.pytorch.quant_adam import LSAdam
 
 logger = logging.getLogger(__name__)
 

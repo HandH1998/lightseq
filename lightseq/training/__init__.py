@@ -18,7 +18,8 @@ from lightseq.training.ops.pytorch.transformer import (
 )
 
 from lightseq.training.ops.pytorch.cross_entropy_layer import LSCrossEntropyLayer
-from lightseq.training.ops.pytorch.adam import LSAdam
+# from lightseq.training.ops.pytorch.adam import LSAdam
+from lightseq.training.ops.pytorch.quant_adam import LSAdam
 from lightseq.training.ops.pytorch.export import (
     export_ls_config,
     export_ls_embedding,
